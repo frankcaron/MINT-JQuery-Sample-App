@@ -1,0 +1,187 @@
+<!--
+
+=================================
+ MINT REST Sample Web Front-End
+ User Creation
+ =================================
+
+ A demonstration of using the MINT REST API with a simple AJAX-based front-end
+ to create a new user.
+
+ Prepared by Frank Caron (frank.caron@uxpsystems.com)
+
+ ©2012, UXP Systems
+ www.uxpsystems.com
+
+ -->
+
+
+<html>
+<head>
+    <title>MINT REST Example - Creating A User</title>
+    <script src="lib/jquery-1.8.3.js" type="text/javascript"></script>
+    <script src="lib/json2.js" type="text/javascript"></script>
+    <LINK href="style/style.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+<div id="page">
+<div id="container">
+<p align="right"><img src="img/uxp_logo.png" width="50" /></p>
+
+<!-- Simple Form -->
+
+<h3>Create A User</h3>
+
+<div id="contact_form">
+<form id="contact" method="">
+    <table>
+        <tr>
+            <td>Admin Username</td>
+            <td><input type="text" name="admin_username" id="admin_username" /></td>
+        </tr>
+        <tr>
+            <td>Admin Password</td>
+            <td><input type="password" name="admin_pass" id="admin_password" /></td>
+        </tr>
+        <tr>
+            <td colspan="2"><hr /></td>
+        </tr>
+        <tr>
+            <td>New User Username</td>
+            <td><input type="text" name="user_username" id="user_username" /> </td>
+        </tr>
+        <tr>
+            <td>New User PIN</td>
+            <td><input type="password" name="user_PIN" id="user_PIN" /></td>
+        </tr>
+        <tr>
+            <td>New User PIN Confirm</td>
+            <td><input type="password" name="user_PIN_confirm" id="user_PIN_confirm" /></td>
+        </tr>
+        <tr>
+            <td>New User Email</td>
+            <td><input type="text" name="user_email" id="user_email" /></td>
+        </tr>
+        <tr>
+            <td colspan="2" align="center" style="padding-top: 20px;"><input type="submit" value="Submit" class="submit" /></td>
+        </tr>
+    </table>
+</form>
+</div>
+
+<!-- JS Magic -->
+
+<script type="text/javascript">
+
+    /* ------------------------------------------------------------
+
+        The following AJAX function is designed to submit the
+        above form, which will log into the MINT platform with
+        the specified admin user and use that authenticated
+        session to create a new user.
+
+        In practical application, this would be used to create
+        the registration process via jQuery mobile or a mobile-friendly
+        website.
+
+    ---------------------------------------------------------------*/
+
+    $(function() {
+        //Upon clicking the submit button, run the AJAX.
+        $(".submit").click(function() {
+
+            //Support cross-domain access for local UXP test only
+            $.support.cors = true;
+
+            //Prep form data
+            var credentials = { "username":$("#admin_username").val(),
+                                "credential":$("#admin_password").val(),
+                                "byPIN":"false" };
+
+
+
+            var user = { "name":$("#user_username").val(),
+                                "username":$("#user_username").val(),
+                                "email":$("#user_email").val(),
+                                "pin":$("#user_PIN").val(),
+                                "pinConfirm":$("#user_PIN_confirm").val(),
+                                "credential":$("#user_PIN").val(),
+                                "credentialConfirm":$("#user_PIN").val() };
+
+
+            //JSONify the form data for processing
+            var json_text = JSON.stringify(credentials, null, 2);
+            var json_user = JSON.stringify(user, null, 2);
+
+            //TESTING: Validate JSON object
+            //alert('json made: ' + json_text);
+
+            //Prep the HTML response holder
+            $('#contact_form').html("<div id='message'>Working...</div>");
+
+            //----------
+            //Create an admin session
+            //----------
+            $.ajax(
+                    {
+                        type: "POST",
+                        url:
+                                'http://qa1.uxpsystems.com/webconsole/rest/session/start',
+
+                        data: json_text,
+                        contentType: "application/json; charset=utf-8",
+                        dataType: "json",
+                        error: function (msg, url, line) {
+                            //Confirm error to end-user
+                            $('#message').html("Sorry, there was a problem with starting a session. Please ensure you filled in the admin info correctly.");
+                        },
+                        success: function (data) {
+                            //----------
+                            //Create the new user
+                            //----------
+                            $.ajax(
+                                    {
+                                        type: "POST",
+                                        url:
+                                                'http://qa1.uxpsystems.com/webconsole/rest/user/profile',
+
+                                        data: json_user,
+                                        contentType: "application/json; charset=utf-8",
+                                        dataType: "json",
+                                        error: function (msg, url, line) {
+                                            //Confirm error to end-user
+                                            $('#message').html("Sorry, there was a problem with creating the user. Please ensure you filled in the user info correctly.");
+                                        },
+                                        success: function (data) {
+                                            //----------
+                                            //Close the admin session
+                                            //----------
+                                            $.ajax(
+                                                    {
+                                                        type: "GET",
+                                                        url: 'http://qa1.uxpsystems.com/webconsole/rest/session/end',
+                                                        contentType: "application/json; charset=utf-8",
+                                                        error: function (msg, url, line) {
+                                                            //Confirm error to end-user
+                                                            $('#message').html("Sorry, there was a problem with closing the session. Please try again.");
+                                                        },
+                                                        success: function (data) {
+                                                            //Confirm that the user was created and all is good.
+                                                            $('#message').html("Your new user has been successfully created. Click <a href='epg.html'>here</a> to log in as this user.");
+                                                        }
+                                                    });
+                                        }
+                            });
+                        }
+                    });
+            //Prevent the page from refreshing on submit.
+            return false;
+        });
+    });
+
+</script>
+</div>
+</div>
+<div style="font-size: 10px;" align="center">UXP Systems - <a href="http://www.uxpsystems.com" target="_blank">www.uxpsystems.com</a></div>
+</body>
+</html>

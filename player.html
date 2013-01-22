@@ -1,0 +1,114 @@
+<!--
+
+=================================
+ MINT REST Sample Web Front-End
+ Streaming Player
+=================================
+
+ A simple video player with a link pulled from the previous EPG page.
+ This is purely to demonstrate the validity of the link returned
+ by the MINT platform and does not account for DRM et al. that would
+ be required in a production implementation.
+
+ Prepared by Frank Caron (frank.caron@uxpsystems.com)
+
+ ©2012, UXP Systems
+ www.uxpsystems.com
+
+ -->
+
+
+<html>
+<head>
+    <title>MINT REST Example - Login & View EPG</title>
+    <LINK href="style/style.css" rel="stylesheet" type="text/css">
+
+    <script src="lib/jquery-1.8.3.js" type="text/javascript"></script>
+    <script src="lib/json2.js" type="text/javascript"></script>
+    <script src="lib/jquery.tablesorter.js" type="text/javascript"></script>
+
+    <script src="jwplayer/jwplayer.js"></script>
+    <script>jwplayer.key="Esk8FNy9ubYunlaC7eupkWXrbyr/SA0kOu2fkdxVKlg="</script>
+
+</head>
+<body>
+<div id="page">
+<div id="container">
+<p align="right"><img src="img/uxp_logo.png" width="50" /></p>
+
+<h3>Watch A Stream</h3>
+
+<div id="video" align="center">
+Loading...
+</div>
+
+<!-- JS Magic -->
+<script>
+
+    //Parse Query String For Vars
+    function getUrlVars()
+    {
+        var vars = [], hash;
+        var hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
+        for(var i = 0; i < hashes.length; i++)
+        {
+            hash = hashes[i].split('=');
+            vars.push(hash[0]);
+            vars[hash[0]] = hash[1];
+        }
+        return vars;
+    }
+    //
+
+    //On body load
+    $(document).ready(function() {
+        $.ajax(
+                {
+                    type: "POST",
+                    url: 'player.html',
+                    success: function (data) {
+
+                        //Grab the video link
+                        var imageURL = getUrlVars()["video"];
+
+                        //Embed the QuickTime player (Mac only)
+                        /*
+                         var embedURL = '<object width="640" height="315" id="qt" classid="clsid:02BF25D5-8C17-4B23-BC80-D3488ABDDC6B" codebase="http://www.apple.com/qtactivex/qtplugin.cab" style="float:left; left:0; position:relative; top:0;">';
+                         embedURL += '<param name="src" value="'+imageURL+'">';
+                         embedURL += '<param name="autoplay" value="true">';
+                         embedURL += '<param name="controller" value="false">';
+                         embedURL += '<embed id="player" name="player" src="'+imageURL+'" bgcolor="000000" width="640" height="315" scale="ASPECT" qtsrc="'+imageURL+'" kioskmode="true" showlogo=false" autoplay="true" controller="true" pluginspage="http://www.apple.com/quicktime/download/">';
+                         embedURL += '</embed></object>';
+                         */
+
+                        //Embed the JW non-HLS Flash player
+                        /*
+                        var embedURL = '<div style="width: 100%;" align="center"><object id="player" classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" name="player" width="640" height="315">';
+                        embedURL += '<param name="movie" value="player/player-licensed.swf" />';
+                        embedURL += '<param name="allowfullscreen" value="true" />';
+                        embedURL += '<param name="allowscriptaccess" value="always" />';
+                        embedURL += '<param name="flashvars" value="file='+imageURL+'&image=player/preview.jpg" />';
+                        embedURL += '<embed type="application/x-shockwave-flash" id="player2" name="player2" src="player/player-licensed.swf" width="640" height="315" allowscriptaccess="always" allowfullscreen="true" flashvars="file='+imageURL+'&image=player/preview.jpg" />';
+                        embedURL += '</object></div>';
+                        */
+
+                        //Embed the JW HLS Flash Player
+                        var embedURL = '<script type="text/javascript">';
+                        embedURL += 'jwplayer("video").setup({ file: "'+imageURL+'",width: "960",height: "473"})</';
+                        embedURL += 'script></div>';
+
+                        //Write to body
+                        $("#video").html(embedURL);
+                    }
+                }
+              )
+    });
+
+</script>
+
+</div>
+
+</div>
+<div style="font-size: 10px;" align="center">UXP Systems - <a href="http://www.uxpsystems.com" target="_blank">www.uxpsystems.com</a></div>
+</body>
+</html>

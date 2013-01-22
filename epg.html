@@ -1,0 +1,217 @@
+<!--
+
+=================================
+ MINT REST Sample Web Front-End
+ Login & EPG View
+=================================
+
+ A demonstration of using the MINT REST API with a simple AJAX-based front-end
+ to login as a user and view EPG data.
+
+ Prepared by Frank Caron (frank.caron@uxpsystems.com)
+
+ ©2012, UXP Systems
+ www.uxpsystems.com
+
+ -->
+
+
+<html>
+<head>
+    <title>MINT REST Example - Login & View EPG</title>
+    <script src="lib/jquery-1.8.3.js" type="text/javascript"></script>
+    <script src="lib/json2.js" type="text/javascript"></script>
+    <script src="lib/stupidtable.js" type="text/javascript"></script>
+    <LINK href="style/style.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+<div id="page">
+<div id="container">
+<p align="right"><img src="img/uxp_logo.png" width="50" /></p>
+
+<!-- Simple Form -->
+
+<h3>Log In</h3>
+
+<div id="contact_form">
+    <form id="contact" method="">
+        <table>
+            <tr>
+                <td>Username</td>
+                <td><input type="text" name="username" id="username" /></td>
+            </tr>
+            <tr>
+                <td>Password</td>
+                <td><input type="password" name="password" id="password" /></td>
+            </tr>
+            <tr>
+                <td colspan="2" align="center" style="padding-top: 20px;"><input type="submit" value="Submit" class="submit" /></td>
+            </tr>
+        </table>
+    </form>
+</div>
+
+<!-- JS Magic -->
+
+<script type="text/javascript">
+
+    /* ------------------------------------------------------------
+
+     The following AJAX function is designed to submit the
+     above form, which will log into the MINT platform with
+     the specified admin user and pull EPG data.
+
+     In practical application, this would be used to create
+     the basic flow (albeit seperated across files)
+     via jQuery mobile or a mobile-friendly website.
+
+     ---------------------------------------------------------------*/
+
+    $(function() {
+        //Upon clicking the submit button, run the AJAX.
+        $(".submit").click(function() {
+
+            //Support cross-domain access for local UXP test only
+            $.support.cors = true;
+
+            //Prep form data
+            var credentials = { "username":$("#username").val(),
+                                "credential":$("#password").val(),
+                                "byPIN":"false" };
+
+            //JSONify the form data for processing
+            var json_text = JSON.stringify(credentials, null, 2);
+
+            //Prep UTC date
+            function pad(num) {
+                return ("0" + num).slice(-2);
+            }
+
+            function formatDate(d) {
+                return [d.getUTCFullYear(),
+                    pad(d.getUTCMonth() + 1),
+                    pad(d.getUTCDate())].join("-") + "T" +
+                        [pad(d.getUTCHours()),
+                            pad(d.getUTCMinutes()),
+                            pad(d.getUTCSeconds())].join(":") + "Z";
+            }
+            var dateString = formatDate(new Date());
+
+            //Prep the HTML response holder
+            $('#contact_form').html("<div id='message'>Working...</div>");
+
+            //----------
+            //Create a session
+            //----------
+            $.ajax(
+                    {
+                        type: "POST",
+                        url:
+                                'http://qa1.uxpsystems.com/webconsole/rest/session/start',
+
+                        data: json_text,
+                        contentType: "application/json; charset=utf-8",
+                        dataType: "json",
+                        error: function (msg, url, line) {
+                            //Confirm error to end-user
+                            $('#message').html("Sorry, there was a problem with starting a session. Please ensure you filled in the login info correctly.");
+                        },
+                        success: function (data) {
+                            //----------
+                            //Retrieve EPG Data
+                            //----------
+                            $.getJSON("http://qa1.uxpsystems.com/webconsole/rest/tv/epg/" + dateString + "/" + dateString,
+                                    function(data){
+
+                                        //Print out the data-holding table
+                                        $('#message').html("Data is:");
+                                        var content = "<table id='channels'><tr><th id='channelnum'>Number</th><th>Name</th><th>Time Slot (GMT)</th><th>Current Show</th></tr>";
+
+                                        //Print out rows with channel number, channel name, current time slot, and the program that is currently airing.
+                                        //Determing the program currently airing requires looking up the schedule for the channel, which contains a
+                                        //mapping of channels to programs for a specific time-slot. The programs bundle is then traversed to locate the
+                                        //according program, from which the name is retrieved.
+
+                                        $.each(data.channels, function(i,channel){
+                                            content += '<tr>'
+                                            content += '<td>' + channel.channelNumber + '</td>';
+                                            content += '<td>' + channel.fullName + '</td>';
+
+                                            //Find the channel's schedule
+                                            for (var h = 0; h < data.schedules.length; h++) {
+                                                if (data.schedules[h].channelId == channel.id) {
+                                                    //Print the time slot
+                                                    content += '<td>' + data.schedules[h].airDate + " - " + data.schedules[h].airTime + '</td>';
+                                                    //Find the show
+                                                    for (var k = 0; k < data.programs.length; ++k) {
+                                                        if (data.programs[k].id == data.schedules[h].programId) {
+                                                            //Print the show name with the stream URL if available
+                                                            //Figure out if there's a stream available
+                                                            var streamURL = "";
+                                                            var embedURL = "";
+                                                            for (var j=0; j < channel.images.length; j++) {
+                                                                var imageURL = channel.images[j].imageUrl;
+                                                                if (imageURL.substring(0,4) == "http") {
+                                                                    //TEST Override
+                                                                    //imageURL = "http://63.245.45.136/live/nbc_hd/hls/ipad/ipad.m3u8";
+                                                                    //Prep the stream URL for printing
+                                                                    imageURL = "player.html?video=" + imageURL;
+                                                                    streamURL = " href=" + imageURL + "";
+                                                                    //
+                                                                    break;
+                                                                }
+                                                            }
+                                                            //Print the program title and, if a link exists, add a link to the player page with ref to the stream URL
+                                                            content += "<td><a" + streamURL + ">" + data.programs[k].title + "</a>" + embedURL + "</td>";
+                                                            break;
+                                                        }
+                                                    }
+                                                    break;
+                                                }
+                                            }
+                                            content += '</tr>';
+
+                                        });
+                                        content += "</table><br/><br/>";
+
+                                        //Print the resulting table to the page
+                                        $("#message").html(content);
+
+                                        //Sort the table based on the channels
+                                        var table = $('#channels');
+                                        $('#channelnum').each(function(){
+                                                    var th = $(this),
+                                                            thIndex = th.index(),
+                                                            inverse = false;
+
+                                                    th.click(function(){
+                                                        table.find('td').filter(function(){
+                                                            return $(this).index() === thIndex;
+                                                        }).sortElements(function(a, b){
+                                                                    return $.text([a]) > $.text([b]) ?
+                                                                            inverse ? -1 : 1
+                                                                            : inverse ? 1 : -1;
+                                                                }, function(){
+
+                                                                    // parentNode is the element we want to move
+                                                                    return this.parentNode;
+                                                                });
+                                                        inverse = !inverse;
+                                                    });
+
+                                                });
+
+                                    });
+                        }
+                    });
+
+            //Prevent the page from refreshing on submit.
+            return false;
+        });
+    });
+</script>
+</div>
+</div>
+<div style="font-size: 10px;" align="center">UXP Systems - <a href="http://www.uxpsystems.com" target="_blank">www.uxpsystems.com</a></div>
+</body>
+</html>
